@@ -11,5 +11,6 @@
 
 // commands
 #include "functions/general/echo.h"
+#include "functions/info/help.h"
 
 #endif // include guard
