@@ -10,7 +10,7 @@ public:
     virtual ~command( ) {}
 
     // executes the command with the provided argument
-    virtual void execute( const std::string& argument ) = 0;
+    virtual void execute( const std::string& argument = "" ) = 0;
 
     // getter for the command informations
     std::string name( ) const { return name_; }

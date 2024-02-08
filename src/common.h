@@ -11,8 +11,16 @@
 #include <sstream>
 #include <iomanip>
 
+// libs
+#ifdef _WIN32
+#include <windows.h> // for Windows
+#elif defined __linux__
+#include <unistd.h> // for Linux and macOS
+#endif
+
 // commands
 #include "functions/general/echo.h"
+#include "functions/general/clear.h"
 
 #include "functions/info/help.h"
 
