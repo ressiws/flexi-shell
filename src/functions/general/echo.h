@@ -6,12 +6,16 @@
 class echo_command : public command
 {
 public:
+    // constructor: initializes the command name and description
     echo_command( )
     {
         name_ = "echo";
-        description_ = "echoes back the provided message";
+        aliases_ = { "say", "print" };
+        description_ = "echoes back the provided message.";
+        category_ = "general";
     }
 
+    // executes the echo command, printing the provided argument
     virtual void execute( const std::string& argument ) override
     {
         std::cout << argument << std::endl;

@@ -8,9 +8,12 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <sstream>
+#include <iomanip>
 
 // commands
 #include "functions/general/echo.h"
+
 #include "functions/info/help.h"
 
 #endif // include guard
