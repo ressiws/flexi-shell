@@ -10,18 +10,22 @@
 #include <unordered_map>
 #include <sstream>
 #include <iomanip>
+#include <filesystem>
+#include <chrono>
+#include <ctime>
 
 // libs
-#ifdef _WIN32
-#include <windows.h> // for Windows
-#elif defined __linux__
-#include <unistd.h> // for Linux and macOS
-#endif
+#include <windows.h> 
+#include <sys/stat.h>
 
 // commands
 #include "functions/general/echo.h"
 #include "functions/general/clear.h"
 
+// information
 #include "functions/info/help.h"
+
+// filesystem
+#include "functions/file_system/ls.h"
 
 #endif // include guard

@@ -9,6 +9,9 @@ void register_commands( std::vector<std::shared_ptr<command>>& commands )
 
     // information
     commands.push_back( std::make_shared<help_command>( commands ) );
+
+    // filesystem
+    commands.push_back( std::make_shared<ls_command>( ) );
 }
 
 int main( )
