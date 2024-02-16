@@ -4,7 +4,6 @@
 #include "../base.h"
 namespace fs = std::filesystem;
 
-// @todo: add more arguments
 class ls_command : public command
 {
 public:
@@ -60,27 +59,109 @@ public:
             entries.push_back( entry );
         }
 
-        // display entries with extended information if 'l' option is specified
-        if ( argument.find( 'l' ) != std::string::npos )
+        bool long_format = ( argument.find( 'l' ) != std::string::npos ); 
+        bool show_hidden = ( argument.find( 'a' ) != std::string::npos ); 
+        bool reverse_order = ( argument.find( 'r' ) != std::string::npos ); 
+        bool sort_by_time = ( argument.find( 't' ) != std::string::npos ); 
+        bool sort_by_size = ( argument.find( 'S' ) != std::string::npos ); 
+        bool sort_by_extension = ( argument.find( 'X' ) != std::string::npos ); 
+        bool human_readable = ( argument.find( 'h' ) != std::string::npos ); 
+        bool show_inode = ( argument.find( 'i' ) != std::string::npos ); 
+        bool list_directories = ( argument.find( 'd' ) != std::string::npos ); 
+        bool list_subdirectories = ( argument.find( 'R' ) != std::string::npos ); 
+        bool append_indicator = ( argument.find( 'F' ) != std::string::npos ); 
+        int depth = -1; // default depth (unlimited)
+
+        std::cout << std::left;
+        for ( const auto& entry : entries )
         {
-            std::cout << std::left;
-            for ( const auto& entry : entries )
+            if ( reverse_order )
+            {
+                std::reverse( entries.begin( ), entries.end( ) );
+            }
+
+            if ( sort_by_time )
+            {
+                std::sort( entries.begin( ), entries.end( ), []( const auto& a, const auto& b )
+                           {
+                               return fs::last_write_time( a.path( ) ) > fs::last_write_time( b.path( ) );
+                           } );
+            }
+
+            if ( sort_by_size )
+            {
+                std::sort( entries.begin( ), entries.end( ), []( const auto& a, const auto& b )
+                           {
+                               return fs::file_size( a.path( ) ) > fs::file_size( b.path( ) );
+                           } );
+            }
+            
+            if ( sort_by_extension )
+            {
+                std::sort( entries.begin( ), entries.end( ), []( const auto& a, const auto& b )
+                           {
+                               auto extension_a = a.path( ).extension( );
+                               auto extension_b = b.path( ).extension( );
+                               return extension_a < extension_b;
+                           } );
+            }
+
+            if ( !show_hidden && entry.path( ).filename( ).string( ).front( ) == '.' )
+            {
+                continue; // skip hidden files if not requested
+            }
+
+            if ( long_format )
             {
                 std::cout << std::setw( 10 ) << get_permissions( entry ) << " ";
-                std::cout << std::setw( 3 )  << get_num_links( entry ) << " ";
+                if ( show_inode )
+                {
+                    get_inode( entry.path( ) );
+                }
+                std::cout << std::setw( 10 ) << get_num_links( entry ) << " ";
                 std::cout << std::setw( 10 ) << get_owner( entry ) << " ";
                 std::cout << std::setw( 10 ) << get_group( entry ) << " ";
-                std::cout << std::setw( 10 ) << get_size( entry ) << " ";
-                std::cout << std::setw( 10 ) << get_last_modified( entry ) << " ";
-                std::cout << entry.path( ).filename( ).string( ) << std::endl;
+                std::cout << std::setw( 10 ) << get_size( entry, human_readable ) << " ";
+                std::cout << std::setw( 20 ) << get_last_modified( entry ) << " ";
             }
-        }
-        else
-        {
-            // display only file/directory names if 'l' option is not specified
-            for ( const auto& entry : entries )
+
+            std::cout << get_filename( entry );
+
+            if ( append_indicator )
             {
-                std::cout << entry.path( ).filename( ).string( ) << std::endl;
+                if ( fs::is_directory( entry.path( ) ) )
+                {
+                    std::cout << "/";
+                }
+                else if ( fs::is_symlink( entry ) )
+                {
+                    std::cout << "@";
+                }
+                else if ( ( entry.status( ).permissions( ) & fs::perms::owner_exec ) != fs::perms::none ||
+                          ( entry.status( ).permissions( ) & fs::perms::group_exec ) != fs::perms::none ||
+                          ( entry.status( ).permissions( ) & fs::perms::others_exec ) != fs::perms::none )
+                {
+                    std::cout << "*";
+                }
+            }
+
+            std::cout << std::endl;
+
+            if ( list_directories && fs::is_directory( entry.path( ) ) )
+            {
+                std::cout << entry.path( ).string( ) << std::endl;
+            }
+
+            if ( list_subdirectories )
+            {
+                size_t depth_pos = argument.find( "-d" );
+
+                if ( depth_pos + 3 < argument.size( ) )
+                {
+                    depth = std::stoi( argument.substr( depth_pos + 3 ) );
+                }
+
+                get_subdirectories( entry, depth - 1 );
             }
         }
     }
@@ -127,11 +208,29 @@ public:
         return result;
     }
 
-    std::string get_size( const fs::directory_entry& entry )
+    std::string get_size( const fs::directory_entry& entry, bool human_readable )
     {
-        // fs::file_size( entry.path( ) )
+        std::ostringstream oss;
+        auto size = fs::file_size( entry.path( ) );
 
-        return std::to_string( fs::file_size( entry.path( ) ) ); // placeholder
+        if ( human_readable )
+        {
+            // convert size to human-readable format
+            const char* suffixes[] = { "B", "KB", "MB", "GB", "TB" };
+            int i = 0;
+            while ( size > 1024 && i < 4 )
+            {
+                size /= 1024;
+                ++i;
+            }
+            oss << size << suffixes[i];
+        }
+        else
+        {
+            oss << size;
+        }
+
+        return oss.str( );
     }
 
     std::string get_last_modified( const fs::directory_entry& entry )
@@ -196,6 +295,40 @@ public:
         CloseHandle( file );
 
         return file_info.nNumberOfLinks;
+    }
+
+    std::size_t get_inode( const fs::path& path )
+    {
+        std::hash<std::string> hasher;
+        return hasher( path.string( ) );
+    }
+
+    std::string get_filename( const fs::directory_entry& entry )
+    {
+        std::string name = entry.path( ).filename( ).string( );
+        if ( fs::is_directory( entry.path( ) ) )
+        {
+            name += "/";
+        }
+        return name;
+    }
+
+    void get_subdirectories( const fs::path& current_path, int depth )
+    {
+        // limit recursion depth
+        if ( depth <= 0 ) 
+            return; 
+
+        for ( const auto& entry : fs::directory_iterator( current_path ) )
+        {
+            std::cout << entry.path( ).filename( ).string( ) << std::endl;
+
+            // recursively list subdirectories if the entry is a directory
+            if ( fs::is_directory( entry ) )
+            {
+                get_subdirectories( entry, depth - 1 );
+            }
+        }
     }
 };
 
